@@ -1,0 +1,67 @@
+/*
+ * Copyright (c) 2018 Touchlab Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+apply plugin: 'konan'
+apply plugin: 'maven-publish'
+
+apply from: '../gradle/configpublishnative.gradle'
+
+if(project.hasProperty('deployIos')) {
+    apply from: '../gradle/configbintray.gradle'
+}
+
+konan.targets = ['iphone', 'iphone_sim', 'macos_x64']
+
+konanArtifacts {
+    library("knarchThreads"){
+        enableMultiplatform true
+    }
+
+    /*framework('knarchtest', targets: ['iphone', 'iphone_sim']) {
+        srcDir 'src/main/kotlin'
+        srcDir 'src/test/kotlin'
+
+        target('iphone_sim') {
+            nativeLibraries '../../cpp/bcdist/ios_x64/tlruntime.bc'
+        }
+
+        target('iphone') {
+            nativeLibraries '../../cpp/bcdist/ios_arm64/tlruntime.bc'
+        }
+
+        extraOpts "-tr", "-g"
+        linkerOpts "-lsqlite3"
+        enableMultiplatform true
+    }*/
+
+    program("knarchtestcmd", targets: ['macos_x64']) {
+        srcDir 'src/main/kotlin'
+        srcDir 'src/test/kotlin'
+        srcDir 'src/testexe/kotlin'
+
+        extraOpts "-tr", "-g"
+//        linkerOpts "-lsqlite3"
+        enableMultiplatform true
+    }
+
+}
+
+dependencies {
+    expectedBy project(':knarch-common')
+}
+
+repositories {
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+}
