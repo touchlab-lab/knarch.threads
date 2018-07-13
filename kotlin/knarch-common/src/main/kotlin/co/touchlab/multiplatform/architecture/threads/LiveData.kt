@@ -1,5 +1,7 @@
 package co.touchlab.multiplatform.architecture.threads
 
+//Can't expect/actual LiveData because of this issue https://youtrack.jetbrains.com/issue/KT-19848
+
 expect open class MutableLiveData<T>(){
     fun getValue():T?
     open fun setValue(value:T)

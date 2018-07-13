@@ -6,7 +6,7 @@ import konan.worker.*
 import co.touchlab.knarch.threads.*
 
 actual class MediatorLiveData<T>:MutableLiveData<T>() {
-    private val mSources = ThreadLocalImpl<HashMap<LiveData<*>, Source<*>>>()
+    private val mSources = ThreadOnly<HashMap<LiveData<*>, Source<*>>>(HashMap())
 
     /**
      * Starts to listen the given {@code source} LiveData, {@code onChanged} observer will be called
@@ -20,23 +20,26 @@ actual class MediatorLiveData<T>:MutableLiveData<T>() {
      * @param onChanged The observer that will receive the events
      * @param <S> The type of data hold by {@code source} LiveData
      */
-    actual fun <S> addSource(source:LiveData<S>, onChanged:Observer<S>) {
+    actual fun <S> addSource(source:MutableLiveData<S>, onChanged:Observer<S>) {
         assertMainThread("addSource")
         val e = Source<S>(source, onChanged)
-        val existing = mSources.get()!!.get(source)
-        if (existing != null && existing.mObserver !== onChanged)
-        {
-            throw IllegalArgumentException(
-                    "This source was already added with the different observer")
+        mSources.access {map ->
+
+            val existing = map.get(source)
+            if (existing != null && existing.mObserver !== onChanged)
+            {
+                throw IllegalArgumentException(
+                        "This source was already added with the different observer")
+            }
+
+            map.put(source, e)
+
+            if (existing == null)
+            {
+                e.plug()
+            }
         }
 
-        mSources.get()!!.put(source, e)
-
-        if (existing != null)
-        {
-            return
-        }
-        e.plug()
     }
 
     /**
@@ -46,13 +49,12 @@ actual class MediatorLiveData<T>:MutableLiveData<T>() {
      * @param <S> the type of data hold by {@code source} LiveData
      */
 
-    actual fun <S> removeSource(toRemote:LiveData<S>) {
+    actual fun <S> removeSource(toRemote:MutableLiveData<S>) {
         assertMainThread("removeSource")
-        val source = mSources.get()!!.remove(toRemote)
-        if (source != null)
-        {
-            source.unplug()
+        mSources.access {
+            it.remove(toRemote)?.unplug()
         }
+
     }
     /*@CallSuper
     protected fun onActive() {
@@ -82,7 +84,7 @@ actual class MediatorLiveData<T>:MutableLiveData<T>() {
         internal fun unplug() {
             mLiveData.removeObserver(this)
         }
-        override fun onChanged(v:V) {
+        override fun onChanged(v:V?) {
             if (mVersion != mLiveData.version.get())
             {
                 mVersion = mLiveData.version.get()
@@ -99,10 +101,11 @@ actual open class MutableLiveData<T>actual constructor():LiveData<T>(){
     public actual override fun setValue(value: T){
         super.setValue(value)
     }
+    actual override fun getValue():T? = super.getValue()
 }
 
-actual abstract class LiveData<T> {
-    private val mObservers = ThreadLocalImpl<HashMap<Observer<T>, LifecycleBoundObserver<T>>>()
+abstract class LiveData<T> {
+    private val mObservers = ThreadOnly<HashMap<Observer<T>, LifecycleBoundObserver<T>>>(HashMap())
     private val mData = AtomicReference(NOT_SET)
     // when setData is called, we set the pending data and actual data swap happens on the main
     // thread
@@ -118,7 +121,6 @@ actual abstract class LiveData<T> {
 
     init {
         assertMainThread("init")
-        mObservers.set(HashMap())
     }
 
     /**
@@ -136,7 +138,7 @@ actual abstract class LiveData<T> {
      *
      * @param value The new value
      */
-    actual fun getValue():T?{
+    open fun getValue():T?{
         val data = mData.get()
         if (data !== NOT_SET)
         {
@@ -145,7 +147,7 @@ actual abstract class LiveData<T> {
         return null
     }
 
-    protected actual open fun setValue(value:T){
+    protected open fun setValue(value:T){
         assertMainThread("setValue")
         version.increment()
         mData.compareAndSwap(mData.get(), value.freeze())
@@ -158,9 +160,10 @@ actual abstract class LiveData<T> {
     }
 
     private fun dispatchValue(){
-        val observerMap = mObservers.get()!!
-        for(observer in observerMap.values){
-            considerNotify(observer)
+        mObservers.access {observerMap ->
+            for(observer in observerMap.values){
+                considerNotify(observer)
+            }
         }
     }
 
@@ -215,12 +218,16 @@ actual abstract class LiveData<T> {
         assertMainThread("observeForever")
         traceLog("from observeForever")
         val wrapper = LifecycleBoundObserver(observer)
-        mObservers.get()!!.put(observer, wrapper)
+        mObservers.access {
+            it.put(observer, wrapper)
+        }
     }
 
     fun removeObserver(observer:Observer<T>){
         assertMainThread("removeObserver")
-        mObservers.get()!!.remove(observer)
+        mObservers.access {
+            it.remove(observer)
+        }
     }
 
     /**
@@ -238,7 +245,7 @@ actual abstract class LiveData<T> {
      *
      * @param value The new value
      */
-    actual protected open fun postValue(value:T) {
+    protected open fun postValue(value:T) {
 
         /*val result  = detachObjectGraph { value.freeze() as Any }
 
@@ -265,7 +272,11 @@ actual abstract class LiveData<T> {
      */
     fun hasObservers():Boolean {
         assertMainThread("hasObservers")
-        return mObservers.get()!!.size > 0
+        var hasSome = false
+        mObservers.access {
+            hasSome = it.size > 0
+        }
+        return hasSome
     }
 
     internal class LifecycleBoundObserver<T>(observer:Observer<T>) {
