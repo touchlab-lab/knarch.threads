@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-include ':knarch-android'
-include ':knarch-common'
-include ':knarch-ios'
+include ':threads-android'
+include ':threads-androidx'
+include ':threads-common'
+include ':threads-ios'
 
 enableFeaturePreview('GRADLE_METADATA')
