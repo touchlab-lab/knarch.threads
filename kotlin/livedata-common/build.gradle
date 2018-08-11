@@ -13,38 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-tasks.whenTaskAdded {task ->
-    if(task.name.contains("compileTestDebugKotlinNative")) {
-        task.enabled = false
-    }
-}
-
-apply plugin: 'kotlin-platform-native'
-
-sourceSets {
-    main {
-        component {
-            baseName.set("knarchThreads")
-            target 'ios_arm32', 'ios_arm64', 'ios_x64', 'macos_x64'
-            outputKinds = [KLIBRARY]
-        }
-    }
-}
-
-
+apply plugin: 'kotlin-platform-common'
 apply plugin: 'maven-publish'
 
-apply from: '../gradle/configpublishnative.gradle'
+apply from: '../gradle/configpublish.gradle'
 
-if(project.hasProperty('deployIos')) {
+if(project.hasProperty('deployLivedataCommon')) {
     apply from: '../gradle/configbintray.gradle'
 }
 
-
 dependencies {
-    expectedBy project(':threads-common')
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-common:$kotlin_version"
 }
 
-repositories {
-    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
-}

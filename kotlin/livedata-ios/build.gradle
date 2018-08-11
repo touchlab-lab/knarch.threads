@@ -13,36 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-tasks.whenTaskAdded {task ->
-    if(task.name.contains("compileTestDebugKotlinNative")) {
-        task.enabled = false
-    }
-}
-
 apply plugin: 'kotlin-platform-native'
 
 sourceSets {
     main {
         component {
-            baseName.set("knarchThreads")
+            baseName.set("knarchLivedata")
             target 'ios_arm32', 'ios_arm64', 'ios_x64', 'macos_x64'
             outputKinds = [KLIBRARY]
         }
     }
 }
 
-
 apply plugin: 'maven-publish'
 
 apply from: '../gradle/configpublishnative.gradle'
 
-if(project.hasProperty('deployIos')) {
+if(project.hasProperty('deployLivedataIos')) {
     apply from: '../gradle/configbintray.gradle'
 }
 
 
 dependencies {
-    expectedBy project(':threads-common')
+    expectedBy project(':livedata-common')
+    implementation project(':threads-ios')
 }
 
 repositories {

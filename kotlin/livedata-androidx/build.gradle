@@ -19,7 +19,7 @@ apply plugin: 'digital.wup.android-maven-publish'
 
 apply from: '../gradle/configpublishaar.gradle'
 
-if(project.hasProperty('deployAndroid')) {
+if(project.hasProperty('deployLivedataAndroidx')) {
     apply from: '../gradle/configbintray.gradle'
 }
 
@@ -34,12 +34,13 @@ android {
     }
 }
 
-def lifecycle_version = "1.0.0"
+def lifecycle_version = "2.0.0-rc01"
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compileOnly "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"
 
-    expectedBy project(':threads-common')
+    expectedBy project(':livedata-common')
 }
 
 task artifacts {

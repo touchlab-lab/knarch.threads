@@ -15,8 +15,12 @@
  */
 
 include ':threads-android'
-include ':threads-androidx'
 include ':threads-common'
 include ':threads-ios'
+
+include ':livedata-android'
+include ':livedata-androidx'
+include ':livedata-common'
+include ':livedata-ios'
 
 enableFeaturePreview('GRADLE_METADATA')

@@ -22,14 +22,3 @@ actual typealias ThreadLocalImpl<T> = ThreadLocal<T>
 @Target(AnnotationTarget.FIELD, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 actual annotation class NativeThreadLocal
-
-actual typealias MutableLiveData<T> = android.arch.lifecycle.MutableLiveData<T>
-actual typealias MediatorLiveData<T> = android.arch.lifecycle.MediatorLiveData<T>
-actual typealias Observer<T> = android.arch.lifecycle.Observer<T>
-
-actual fun <S, T> MediatorLiveData<T>.addSource(source:MutableLiveData<S>, onChanged:Observer<S>){
-    this.addSource(source as android.arch.lifecycle.LiveData<S>, onChanged)
-}
-actual fun <S, T> MediatorLiveData<T>.removeSource(toRemote:MutableLiveData<S>){
-    this.removeSource(toRemote as android.arch.lifecycle.LiveData<S>)
-}

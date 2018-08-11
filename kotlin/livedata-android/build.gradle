@@ -19,7 +19,7 @@ apply plugin: 'digital.wup.android-maven-publish'
 
 apply from: '../gradle/configpublishaar.gradle'
 
-if(project.hasProperty('deployAndroid')) {
+if(project.hasProperty('deployLivedataAndroid')) {
     apply from: '../gradle/configbintray.gradle'
 }
 
@@ -38,17 +38,18 @@ def lifecycle_version = "1.0.0"
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compileOnly "android.arch.lifecycle:extensions:$lifecycle_version"
 
-    expectedBy project(':threads-common')
+    expectedBy project(':livedata-common')
 }
 
 task artifacts {
     group = "Help"
     description = "Displays the artifacts associated with each configuration of " + project
     doFirst {
-    configurations.findAll().each { config ->
-        println "${config}:"
-        config.allArtifacts.getFiles().each { file -> println " " + file}
+        configurations.findAll().each { config ->
+            println "${config}:"
+            config.allArtifacts.getFiles().each { file -> println " " + file}
             println ' '
         }
     }
