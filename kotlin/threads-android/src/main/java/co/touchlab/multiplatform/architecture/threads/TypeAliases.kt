@@ -18,7 +18,3 @@ package co.touchlab.multiplatform.architecture.threads
 import java.lang.ThreadLocal
 
 actual typealias ThreadLocalImpl<T> = ThreadLocal<T>
-
-@Target(AnnotationTarget.FIELD, AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.SOURCE)
-actual annotation class NativeThreadLocal

@@ -13,8 +13,6 @@ expect interface Observer<T>{
 }
 
 expect class MediatorLiveData<T>():MutableLiveData<T> {
-//    fun <S> addSource(source:MutableLiveData<S>, onChanged:Observer<S>)
-//    fun <S> removeSource(toRemote:MutableLiveData<S>)
 }
 
 expect fun <S, T> MediatorLiveData<T>.addSource(source:MutableLiveData<S>, onChanged:Observer<S>)

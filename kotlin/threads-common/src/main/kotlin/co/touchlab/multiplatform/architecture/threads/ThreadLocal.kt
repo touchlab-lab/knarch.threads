@@ -24,7 +24,4 @@ expect open class ThreadLocalImpl<T>(){
     fun set(value:T?)
 }
 
-@Target(AnnotationTarget.FIELD, AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.SOURCE)
-expect annotation class NativeThreadLocal
 

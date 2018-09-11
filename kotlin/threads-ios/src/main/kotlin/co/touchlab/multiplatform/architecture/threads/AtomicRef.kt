@@ -1,20 +1,13 @@
 package co.touchlab.multiplatform.architecture.threads
 
-import konan.worker.*
+import kotlin.native.*
+import kotlin.native.concurrent.*
 
-actual class AtomicRef<T>actual constructor(t:T?){
-    val store:konan.worker.AtomicReference<T>
-
-    init {
-        if(t != null)
-            t.freeze()
-
-        store = konan.worker.AtomicReference<T>(t)
-    }
-
-    actual fun compareAndSwapValue(expected: T?, new: T?): T?{
-        return store.compareAndSwap(expected, new.freeze())
-    }
-
-    actual fun getValue(): T? = store.get()
+actual class AtomicRef<T> actual constructor(t: T) {
+    val atom = AtomicReference<T>(t.freeze())
+    actual var value: T
+        get() = atom.value
+        set(value) {
+            atom.value = value.freeze()
+        }
 }

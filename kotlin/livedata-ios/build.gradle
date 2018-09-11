@@ -21,6 +21,8 @@ sourceSets {
             baseName.set("knarchLivedata")
             target 'ios_arm32', 'ios_arm64', 'ios_x64', 'macos_x64'
             outputKinds = [KLIBRARY]
+            publishSources = false
+            publishJavadoc = false
         }
     }
 }

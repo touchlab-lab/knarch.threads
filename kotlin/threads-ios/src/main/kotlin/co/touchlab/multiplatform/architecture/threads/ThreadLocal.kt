@@ -16,7 +16,8 @@
 
 package co.touchlab.multiplatform.architecture.threads
 
-import konan.worker.*
+import kotlin.native.*
+import kotlin.native.concurrent.*
 
 actual open class ThreadLocalImpl<T> actual constructor(){
     private val threadLocalId = ThreadLocalIdCounter.nextThreadLocalId()
@@ -40,7 +41,7 @@ actual open class ThreadLocalImpl<T> actual constructor(){
     }
 }
 
-@konan.ThreadLocal
+@ThreadLocal
 private object ThreadLocalState {
     val threadLocalMap = HashMap<Int, Any>()
 }
@@ -50,4 +51,3 @@ private object ThreadLocalIdCounter {
     fun nextThreadLocalId():Int = threadLocalId.addAndGet(1)
 }
 
-actual typealias NativeThreadLocal = konan.ThreadLocal

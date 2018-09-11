@@ -2,7 +2,8 @@ package co.touchlab.multiplatform.architecture.livedata
 
 import platform.Foundation.*
 import platform.darwin.*
-import konan.worker.*
+import kotlin.native.*
+import kotlin.native.concurrent.*
 import co.touchlab.knarch.threads.*
 import co.touchlab.multiplatform.architecture.threads.*
 
@@ -94,9 +95,9 @@ actual class MediatorLiveData<T>:MutableLiveData<T>() {
             mLiveData.removeObserver(this)
         }
         override fun onChanged(v:V?) {
-            if (mVersion != mLiveData.version.get())
+            if (mVersion != mLiveData.version.value)
             {
-                mVersion = mLiveData.version.get()
+                mVersion = mLiveData.version.value
                 mObserver.onChanged(v)
             }
         }
@@ -123,7 +124,7 @@ abstract class LiveData<T> {
     private val mDispatchingValue = AtomicBoolean(false)
     private val mDispatchInvalidated = AtomicBoolean(false)
     private val mPostValueRunnable = {
-        val oldValue:Any? = mPendingData.compareAndSwap(mPendingData.get(), NOT_SET)
+        val oldValue:Any? = mPendingData.compareAndSwap(mPendingData.value, NOT_SET)
         if(oldValue !== NOT_SET)
             setValue(oldValue as T)
     }
@@ -149,7 +150,7 @@ abstract class LiveData<T> {
      * @param value The new value
      */
     open fun getValue():T?{
-        val data = mData.get()
+        val data = mData.value
         if (data !== NOT_SET)
         {
             return data as T?
@@ -160,7 +161,7 @@ abstract class LiveData<T> {
     protected open fun setValue(value:T){
         assertMainThread("setValue")
         version.increment()
-        mData.compareAndSwap(mData.get(), value.freeze())
+        mData.compareAndSwap(mData.value, (value as Any).freeze())
         dispatchValue()
     }
 
@@ -172,19 +173,19 @@ abstract class LiveData<T> {
     }
 
     private fun considerNotify(observer:LifecycleBoundObserver<T>) {
-        val ver = version.get()
-        val lastVer: Int = observer.lastVersion.get()
+        val ver = version.value
+        val lastVer: Int = observer.lastVersion.value
         if (lastVer >= ver)
         {
             return
         }
         observer.lastVersion.compareAndSwap(lastVer, ver)
-        observer.observer.onChanged(mData.get()!! as T)
+        observer.observer.onChanged(mData.value as T)
     }
 
     private fun dispatchingValue(initiatorArg:LifecycleBoundObserver<T>?) {
         var initiator:LifecycleBoundObserver<T>? = initiatorArg
-        if (mDispatchingValue.get())
+        if (mDispatchingValue.value)
         {
             mDispatchInvalidated.compareAndSwap(false, true)
             return
@@ -199,7 +200,7 @@ abstract class LiveData<T> {
                 initiator = null
             }
         }
-        while (mDispatchInvalidated.get())
+        while (mDispatchInvalidated.value)
         mDispatchingValue.compareAndSwap(true, false)
     }
 
@@ -253,7 +254,7 @@ abstract class LiveData<T> {
             setValue(mainResult)
         }*/
 
-        val postTask:Boolean = mPendingData.compareAndSwap(mPendingData.get(), value.freeze()) === NOT_SET
+        val postTask:Boolean = mPendingData.compareAndSwap(mPendingData.value, (value as Any).freeze()) === NOT_SET
         if (!postTask)
         {
             return
