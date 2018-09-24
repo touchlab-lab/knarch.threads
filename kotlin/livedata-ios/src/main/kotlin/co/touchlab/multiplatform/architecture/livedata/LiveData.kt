@@ -4,6 +4,7 @@ import platform.Foundation.*
 import platform.darwin.*
 import kotlin.native.*
 import kotlin.native.concurrent.*
+import kotlinx.cinterop.*
 import co.touchlab.knarch.threads.*
 import co.touchlab.multiplatform.architecture.threads.*
 
@@ -114,7 +115,11 @@ actual open class MutableLiveData<T>actual constructor():LiveData<T>(){
     actual override fun getValue():T? = super.getValue()
 }
 
-abstract class LiveData<T> {
+internal interface RunFromQueue{
+    fun retrunFunction()
+}
+
+abstract class LiveData<T> :RunFromQueue{
     private val mObservers = ThreadLocalImpl<HashMap<Observer<T>, LifecycleBoundObserver<T>>>()
     private val mData = AtomicReference(NOT_SET)
     // when setData is called, we set the pending data and actual data swap happens on the main
@@ -123,15 +128,20 @@ abstract class LiveData<T> {
     internal val version = AtomicInt(START_VERSION)
     private val mDispatchingValue = AtomicBoolean(false)
     private val mDispatchInvalidated = AtomicBoolean(false)
-    private val mPostValueRunnable = {
-        val oldValue:Any? = mPendingData.compareAndSwap(mPendingData.value, NOT_SET)
-        if(oldValue !== NOT_SET)
-            setValue(oldValue as T)
-    }
 
     init {
         assertMainThread("init")
         mObservers.set(HashMap())
+    }
+
+    private fun finishPostPending(){
+        val oldValue: Any? = mPendingData.compareAndSwap(mPendingData.value, NOT_SET)
+        if (oldValue !== NOT_SET)
+            setValue(oldValue as T)
+    }
+
+    override fun retrunFunction(){
+        finishPostPending()
     }
 
     /**
@@ -149,58 +159,52 @@ abstract class LiveData<T> {
      *
      * @param value The new value
      */
-    open fun getValue():T?{
+    open fun getValue(): T? {
         val data = mData.value
-        if (data !== NOT_SET)
-        {
+        if (data !== NOT_SET) {
             return data as T?
         }
         return null
     }
 
-    protected open fun setValue(value:T){
+    protected open fun setValue(value: T) {
         assertMainThread("setValue")
         version.increment()
         mData.compareAndSwap(mData.value, (value as Any).freeze())
         dispatchValue()
     }
 
-    private fun dispatchValue(){
-    val observerMap = mObservers.get()!!
-        for(observer in observerMap.values){
+    private fun dispatchValue() {
+        val observerMap = mObservers.get()!!
+        for (observer in observerMap.values) {
             considerNotify(observer)
         }
     }
 
-    private fun considerNotify(observer:LifecycleBoundObserver<T>) {
+    private fun considerNotify(observer: LifecycleBoundObserver<T>) {
         val ver = version.value
         val lastVer: Int = observer.lastVersion.value
-        if (lastVer >= ver)
-        {
+        if (lastVer >= ver) {
             return
         }
         observer.lastVersion.compareAndSwap(lastVer, ver)
         observer.observer.onChanged(mData.value as T)
     }
 
-    private fun dispatchingValue(initiatorArg:LifecycleBoundObserver<T>?) {
-        var initiator:LifecycleBoundObserver<T>? = initiatorArg
-        if (mDispatchingValue.value)
-        {
+    private fun dispatchingValue(initiatorArg: LifecycleBoundObserver<T>?) {
+        var initiator: LifecycleBoundObserver<T>? = initiatorArg
+        if (mDispatchingValue.value) {
             mDispatchInvalidated.compareAndSwap(false, true)
             return
         }
         mDispatchingValue.compareAndSwap(false, true)
-        do
-        {
+        do {
             mDispatchInvalidated.compareAndSwap(true, false)
-            if (initiator != null)
-            {
+            if (initiator != null) {
                 considerNotify(initiator)
                 initiator = null
             }
-        }
-        while (mDispatchInvalidated.value)
+        } while (mDispatchInvalidated.value)
         mDispatchingValue.compareAndSwap(true, false)
     }
 
@@ -219,13 +223,13 @@ abstract class LiveData<T> {
      * @param observer The observer that will receive the events
      */
 //    @MainThread
-    fun observeForever(observer:Observer<T>) {
+    fun observeForever(observer: Observer<T>) {
         assertMainThread("observeForever")
         val wrapper = LifecycleBoundObserver(observer)
         mObservers.get()!!.put(observer, wrapper)
     }
 
-    fun removeObserver(observer:Observer<T>){
+    fun removeObserver(observer: Observer<T>) {
         assertMainThread("removeObserver")
         mObservers.get()!!.remove(observer)
     }
@@ -245,7 +249,7 @@ abstract class LiveData<T> {
      *
      * @param value The new value
      */
-    protected open fun postValue(value:T) {
+    protected open fun postValue(value: T) {
 
         /*val result  = detachObjectGraph { value.freeze() as Any }
 
@@ -254,15 +258,12 @@ abstract class LiveData<T> {
             setValue(mainResult)
         }*/
 
-        val postTask:Boolean = mPendingData.compareAndSwap(mPendingData.value, (value as Any).freeze()) === NOT_SET
-        if (!postTask)
-        {
+        val postTask: Boolean = mPendingData.compareAndSwap(mPendingData.value, (value as Any).freeze()) === NOT_SET
+        if (!postTask) {
             return
         }
 
-        dispatch_async(dispatch_get_main_queue()){
-            mPostValueRunnable()
-        }
+        threadRun(this)
     }
 
     /**
@@ -270,24 +271,36 @@ abstract class LiveData<T> {
      *
      * @return true if this LiveData has observers
      */
-    fun hasObservers():Boolean {
+    fun hasObservers(): Boolean {
         assertMainThread("hasObservers")
         return mObservers.get()!!.size > 0
     }
 
-    internal class LifecycleBoundObserver<T>(observer:Observer<T>) {
-        val observer:Observer<T>
-        var active:Boolean = false
+    internal class LifecycleBoundObserver<T>(observer: Observer<T>) {
+        val observer: Observer<T>
+        var active: Boolean = false
         var lastVersion = AtomicInt(START_VERSION)
-        init{
+
+        init {
             this.observer = observer
         }
     }
 
     companion object {
         internal val START_VERSION = -1
-        private val NOT_SET = Any()
+        private val NOT_SET = Any().freeze()
     }
+}
+
+internal fun threadRun(ld:RunFromQueue){
+    dispatch_async_f(dispatch_get_main_queue(), DetachedObjectGraph {
+        ld
+    }.asCPointer(), staticCFunction {
+        it:COpaquePointer? ->
+        initRuntimeIfNeeded()
+        val data = DetachedObjectGraph<RunFromQueue>(it).attach()
+        data.retrunFunction()
+    })
 }
 
 private fun assertMainThread(methodName:String) {
