@@ -24,9 +24,10 @@ if(project.hasProperty('deployLivedataAndroid')) {
 }
 
 android {
-    compileSdkVersion 27
+    compileSdkVersion 26
+    buildToolsVersion "26.0.2"
     defaultConfig {
-        minSdkVersion 14
+        minSdkVersion 16
     }
 
     compileOptions {
@@ -34,7 +35,7 @@ android {
     }
 }
 
-def lifecycle_version = "1.0.0"
+def lifecycle_version = "1.1.1"
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"

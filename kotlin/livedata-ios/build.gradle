@@ -41,7 +41,4 @@ dependencies {
     implementation project(':threads-ios')
 }
 
-repositories {
-    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
-}
 
