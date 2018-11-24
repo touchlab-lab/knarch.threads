@@ -54,13 +54,18 @@ buildscript{
         maven { url "https://dl.bintray.com/jetbrains/kotlin-native-dependencies" }
         maven { url 'https://dl.bintray.com/kotlin/kotlin-dev/' }
         maven { url "https://dl.bintray.com/kotlin/kotlin-eap/" }
+        if(project.hasProperty('j2objcMavenDeploy')) {
+            maven {
+                url project.property('j2objcMavenDeploy')
+            }
+        }
     }
 
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.android.tools.build:gradle:3.2.1'
         classpath "org.jetbrains.kotlin:kotlin-native-gradle-plugin:$kotlin_version"
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.2-SNAPSHOT'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.3-kotlin-SNAPSHOT'
         classpath 'digital.wup:android-maven-publish:3.6.2'
     }
 }
